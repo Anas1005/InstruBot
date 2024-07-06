@@ -59,6 +59,14 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script: |
+            # Ensure Docker is running
+            sudo systemctl start docker
+            sudo systemctl enable docker
+
+            # Update Docker Compose
+            sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+
             cd /home/ubuntu/Instruvibes
             sudo docker-compose -f docker-compose.prod.yml down  # Stop and remove current containers
             sudo docker system prune -f  # Clean up unused Docker objects
