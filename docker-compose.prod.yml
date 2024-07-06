@@ -1,5 +1,5 @@
-
 version: '3.8'
+
 services:
   bot-service:
     image: anas1005/instruvibes:bot-service
@@ -9,6 +9,8 @@ services:
       - shared_audio:/usr/src/app/shared
     ports:
       - "3000:3000"
+    env_file:
+      - .env
 
   search-service:
     image: anas1005/instruvibes:search-service
@@ -16,6 +18,8 @@ services:
       - redis
     ports:
       - "3002:3002"
+    env_file:
+      - .env
 
   converter-service:
     image: anas1005/instruvibes:converter-service
@@ -25,6 +29,8 @@ services:
       - shared_audio:/usr/src/app/shared
     ports:
       - "3001:3001"
+    env_file:
+      - .env
 
   redis:
     image: redis:latest
