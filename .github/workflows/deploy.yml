@@ -52,19 +52,19 @@ jobs:
           push: true
           tags: anas1005/instruvibes:converter-service  
 
-      - name: SSH into EC2 and deploy
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_PRIVATE_KEY }}
-          env:
-            TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-            SPOTIFY_ID: ${{ secrets.SPOTIFY_ID }}
-            SPOTIFY_SECRET: ${{ secrets.SPOTIFY_SECRET }}
-            YOUTUBE_API: ${{ secrets.YOUTUBE_API }}
-            GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
-          script: |
-            cd /home/ubuntu/Instruvibes
-            sudo docker-compose -f docker-compose.prod.yml pull
-            sudo docker-compose -f docker-compose.prod.yml up -d
+      # - name: SSH into EC2 and deploy
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host: ${{ secrets.EC2_HOST }}
+      #     username: ${{ secrets.EC2_USERNAME }}
+      #     key: ${{ secrets.EC2_PRIVATE_KEY }}
+      #     env:
+      #       TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      #       SPOTIFY_ID: ${{ secrets.SPOTIFY_ID }}
+      #       SPOTIFY_SECRET: ${{ secrets.SPOTIFY_SECRET }}
+      #       YOUTUBE_API: ${{ secrets.YOUTUBE_API }}
+      #       GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
+      #     script: |
+      #       cd /home/ubuntu/Instruvibes
+      #       sudo docker-compose -f docker-compose.prod.yml pull
+      #       sudo docker-compose -f docker-compose.prod.yml up -d
