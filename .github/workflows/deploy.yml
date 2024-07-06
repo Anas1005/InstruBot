@@ -1,9 +1,10 @@
-
 name: CD Pipeline
+
 on:
   push:
     branches:
       - master  # Adjust to your branch name
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -58,7 +59,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           env:
-            TELEGRAM_TOKEN : ${{ secrets.TELEGRAM_TOKEN }}
+            TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
             SPOTIFY_ID: ${{ secrets.SPOTIFY_ID }}
             SPOTIFY_SECRET: ${{ secrets.SPOTIFY_SECRET }}
             YOUTUBE_API: ${{ secrets.YOUTUBE_API }}

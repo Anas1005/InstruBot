@@ -13,7 +13,7 @@ const redisConfig = {
   port: 6379
 };
 
-// Initialize BotServicee
+// Initialize BotService
 const botService = new BotService(botToken, redisConfig);
 botService.startBot();
 
