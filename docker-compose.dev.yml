@@ -1,0 +1,42 @@
+version: '3.8'
+services:
+  bot-service:
+    build:
+      context: .
+      dockerfile: bot-service/Dockerfile
+    depends_on:
+      - redis
+    volumes:
+      - shared_audio:/usr/src/app/shared
+    ports:
+      - "3000:3000"  # Map bot-service port to host
+
+  search-service:
+    build:
+      context: .
+      dockerfile: search-service/Dockerfile
+    depends_on:
+      - redis
+    ports:
+      - "3002:3002"  # Map search-service port to host
+
+  converter-service:
+    build:
+      context: .
+      dockerfile: converter-service/Dockerfile
+    depends_on:
+      - redis
+    volumes:
+      - shared_audio:/usr/src/app/shared
+    ports:
+      - "3001:3001"  # Map converter-service port to host
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+volumes:
+  shared_audio:
+    driver: local
+
