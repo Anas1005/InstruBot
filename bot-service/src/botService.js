@@ -17,6 +17,7 @@ class BotService {
       connection: redisConfig,
     });
 
+    this.redisClient = new Redis(redisConfig); // For rate limiting
     this.redisSub = new Redis(redisConfig); // For subscribing
 
     this.worker = new Worker("progress-updates", this.processJob.bind(this), {
@@ -30,6 +31,7 @@ class BotService {
   }
 
   initializeBot() {
+    // this.bot.use(this.rateLimiterMiddleware.bind(this));
     this.bot.start((ctx) =>
       ctx.reply(
         "Welcome! 🎶 Send a song name to receive the Instrumental version."
@@ -57,6 +59,27 @@ class BotService {
 
   async processJob(job) {
     await this.handleProgressUpdate(job.data);
+  }
+
+  async rateLimiterMiddleware(ctx, next) {
+    const userId = ctx.from.id;
+    const key = `rate_limit:${userId}`;
+    const rateLimit = 4; // Number of allowed requests
+    const expireTime = 60; // Time window in seconds
+
+    const current = await this.redisClient.get(key);
+    if (current && current >= rateLimit) {
+      return ctx.reply("You have exceeded the rate limit. Please try again later.");
+    }
+
+    await this.redisClient.multi()
+      .incr(key)
+      .expire(key, expireTime)
+      .exec();
+     
+      console.log("By Passed.....")
+
+    return next();
   }
 
   async handleTextMessage(ctx) {
@@ -147,6 +170,7 @@ class BotService {
     const { userId, audioPath, raw } = JSON.parse(message);
     const rawQuery = raw;
     const fullAudioPath = path.join(sharedVolumePath, path.basename(audioPath));
+    // const fullAudioPath = audioPath;
     try {
       console.log("✅ Conversion Received for User:", userId, fullAudioPath);
       await this.progressQu.add("submit-job", {
