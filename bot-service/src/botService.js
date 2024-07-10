@@ -61,26 +61,26 @@ class BotService {
     await this.handleProgressUpdate(job.data);
   }
 
-  async rateLimiterMiddleware(ctx, next) {
-    const userId = ctx.from.id;
-    const key = `rate_limit:${userId}`;
-    const rateLimit = 4; // Number of allowed requests
-    const expireTime = 60; // Time window in seconds
+  // async rateLimiterMiddleware(ctx, next) {
+  //   const userId = ctx.from.id;
+  //   const key = `rate_limit:${userId}`;
+  //   const rateLimit = 4; // Number of allowed requests
+  //   const expireTime = 60; // Time window in seconds
 
-    const current = await this.redisClient.get(key);
-    if (current && current >= rateLimit) {
-      return ctx.reply("You have exceeded the rate limit. Please try again later.");
-    }
+  //   const current = await this.redisClient.get(key);
+  //   if (current && current >= rateLimit) {
+  //     return ctx.reply("You have exceeded the rate limit. Please try again later.");
+  //   }
 
-    await this.redisClient.multi()
-      .incr(key)
-      .expire(key, expireTime)
-      .exec();
+  //   await this.redisClient.multi()
+  //     .incr(key)
+  //     .expire(key, expireTime)
+  //     .exec();
      
-      console.log("By Passed.....")
+  //     console.log("By Passed.....")
 
-    return next();
-  }
+  //   return next();
+  // }
 
   async handleTextMessage(ctx) {
     try {

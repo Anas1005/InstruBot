@@ -65,6 +65,7 @@ jobs:
 
             cd /home/ubuntu/Instruvibes
             sudo docker-compose -f docker-compose.prod.yml down  # Stop and remove current containers
-            sudo docker system prune -f  # Clean up unused Docker objects
+            sudo docker system prune -a -f  # Clean up unused Docker objects
             sudo docker-compose -f docker-compose.prod.yml pull  # Pull latest images
             sudo docker-compose -f docker-compose.prod.yml up -d  # Start new containers
+  
