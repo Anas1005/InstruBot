@@ -29,6 +29,10 @@ RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o 
 RUN ln -s /usr/bin/ffmpeg /usr/local/bin/ffmpeg && \
     ln -s /usr/bin/ffprobe /usr/local/bin/ffprobe
 
+
+# Copy cookies.txt into the Docker image
+COPY ../cookies.txt /usr/src/app/shared/cookies.txt
+
 # Copy the entire service directory into the Docker image
 COPY . .
 

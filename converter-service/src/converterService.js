@@ -89,7 +89,9 @@ class ConverterService {
         '--output',
         tempAudioPath,
         '--ffmpeg-location',
-        ffmpegPath
+        ffmpegPath,
+        '--cookies',
+        process.env.YT_DLP_COOKIES_PATH 
       ]);
 
       ytDlpProcess.stdout.on('data', (data) => {
