@@ -1,11 +1,13 @@
+// 
+
 const Redis = require("ioredis");
 const { Queue, Worker } = require("bullmq");
-const fs = require("fs");
-const ytdl = require("ytdl-core");
+const { spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+const ffmpegPath = '/usr/local/bin/ffmpeg';
+const ytDlpPath = '/usr/local/bin/yt-dlp';
 const sharedVolumePath = '/usr/src/app/shared';
-const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
-const ffmpeg = require("fluent-ffmpeg");
-const path = require("path");
 
 class ConverterService {
   constructor(redisConfig) {
@@ -16,7 +18,6 @@ class ConverterService {
       connection: redisConfig,
     });
     this.publisher = new Redis(redisConfig);
-    ffmpeg.setFfmpegPath(ffmpegPath);
     console.log("ConverterService initialized.");
   }
 
@@ -27,41 +28,43 @@ class ConverterService {
   async handleConversion({ userId, videoId, title, raw }) {
     try {
       const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      // const audioPath = path.join(__dirname, `${title}-${videoId}.mp3`);
-      const audioPath = path.join(sharedVolumePath, `${title}-${videoId}.mp3`)
+      const tempAudioBase = path.join(sharedVolumePath, `${title}-${videoId}`);
+      const tempAudioPath = `${tempAudioBase}.mp3`;
+      const outputPath = `${tempAudioBase}-compressed.mp3`;
       console.log(`Starting conversion for video ${title}, user ${userId}`);
+
       await this.progressQu.add("submit-job", {
         userId,
         step: "downloading_video",
         progress: 0.9,
       });
 
-      await this.downloadAndConvertWithRetry(videoUrl, audioPath, userId);
+      const finalPath = await this.downloadAndConvertWithRetry(videoUrl, tempAudioPath, outputPath, userId);
+      console.log("Final Path....", finalPath)
 
       // Notify bot service about conversion completion
       await this.publisher.publish(
         "conversion-complete",
-        JSON.stringify({ userId, audioPath, raw })
+        JSON.stringify({ userId, audioPath: finalPath, raw })
       );
-      console.log(
-        `Conversion complete for video ID ${videoId}, user ${userId}`
-      );
+      console.log(`Conversion complete for video ID ${videoId}, user ${userId}`);
     } catch (error) {
       console.error("Error in handleConversion:", error);
       // Optionally handle retries or error recovery logic here
     }
   }
 
-  async downloadAndConvertWithRetry(videoUrl, audioPath, userId, retries = 3) {
+  async downloadAndConvertWithRetry(videoUrl, tempAudioPath, outputPath, userId, retries = 3) {
     try {
-      await this.downloadAndConvert(videoUrl, audioPath, userId);
+     return await this.downloadAndConvert(videoUrl, tempAudioPath, outputPath, userId);
     } catch (error) {
       console.error("Error during conversion:", error);
       if (retries > 0) {
         console.log(`Retrying conversion, ${retries} attempts left...`);
-        await this.downloadAndConvertWithRetry(
+       return await this.downloadAndConvertWithRetry(
           videoUrl,
-          audioPath,
+          tempAudioPath,
+          outputPath,
           userId,
           retries - 1
         );
@@ -73,17 +76,33 @@ class ConverterService {
     }
   }
 
-  async downloadAndConvert(videoUrl, audioPath, userId) {
+   downloadAndConvert(videoUrl, tempAudioPath, outputPath, userId){
     return new Promise((resolve, reject) => {
       console.log(`Downloading and converting video from URL: ${videoUrl}`);
-      const stream = ytdl(videoUrl, { quality: "highestaudio" });
+      
+      // Download video and extract audio
+      const ytDlpProcess = spawn(ytDlpPath, [
+        videoUrl,
+        '--extract-audio',
+        '--audio-format',
+        'mp3',
+        '--output',
+        tempAudioPath,
+        '--ffmpeg-location',
+        ffmpegPath
+      ]);
 
-      ffmpeg(stream)
-        .audioBitrate(48)   // Further reduce the bitrate
-        .save(audioPath)
-        .on("end", async () => {
-          console.log(`Conversion finished, saved to ${audioPath}`);
-          fs.stat(audioPath, async (err, stats) => {
+      ytDlpProcess.stdout.on('data', (data) => {
+        console.log(`stdout: ${data}`);
+      });
+
+      ytDlpProcess.stderr.on('data', (data) => {
+        console.error(`stderr: ${data}`);
+      });
+
+      ytDlpProcess.on('close', (code) => {
+        if (code === 0) {
+          fs.stat(tempAudioPath, async (err, stats) => {
             if (err) {
               console.error("Error getting file stats:", err);
               reject(err);
@@ -92,29 +111,46 @@ class ConverterService {
               console.log(`File size: ${fileSizeMB} MB`);
 
               if (fileSizeMB > 3) {
-                console.log("File size exceeded 3MB, terminating process.");
-                await this.publisher.publish(
-                  "conversion-exceed",
-                  JSON.stringify({ userId, message: "File size exceeded 3MB" })
-                );
-                fs.unlink(audioPath, (err) => {
-                  if (err) {
-                    console.error("Error deleting large file:", err);
+                // Reduce file size
+                const bitrate = '64k'; // Adjust bitrate as needed
+                const ffmpegProcess = spawn(ffmpegPath, [
+                  '-i', tempAudioPath,
+                  '-b:a', bitrate,
+                  outputPath
+                ]);
+
+                ffmpegProcess.stdout.on('data', (data) => {
+                  console.log(`stdout: ${data}`);
+                });
+
+                ffmpegProcess.stderr.on('data', (data) => {
+                  console.error(`stderr: ${data}`);
+                });
+
+                ffmpegProcess.on('close', (ffmpegCode) => {
+                  if (ffmpegCode === 0) {
+                    fs.unlink(tempAudioPath, (err) => {
+                      if (err) {
+                        console.error('Error deleting original file:', err);
+                      }
+                    });
+                    resolve(outputPath);
                   } else {
-                    console.log("Deleted large file successfully.");
+                    console.error('FFmpeg compression failed');
+                    reject(new Error('Compression failed'));
                   }
                 });
-                reject(new Error("File size exceeded 3MB"));
               } else {
-                resolve(audioPath);
+                console.log("It's < 3MB....")
+                resolve(tempAudioPath);
               }
             }
           });
-        })
-        .on("error", (error) => {
-          console.error("Error during conversion:", error);
-          reject(error);
-        });
+        } else {
+          console.error('Video download failed');
+          reject(new Error('Download failed'));
+        }
+      });
     });
   }
 }
